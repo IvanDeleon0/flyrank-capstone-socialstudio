@@ -1,11 +1,17 @@
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 import secrets
+import hmac
+import hashlib
+import json
+import requests
 
 app = FastAPI(title="Mock Social Platform API")
 
 idempotency_store = {}
 publish_call_count = 0
+WEBHOOK_SECRET = "shared-secret-for-testing"
+
 
 class PublishRequest(BaseModel):
     post_id: str
@@ -48,4 +54,24 @@ def publish(request: PublishRequest, idempotency_key: str = Header(None)):
         "published_id": "fake-post-" + secrets.token_hex(6)
     }
     idempotency_store[idempotency_key] = result
+    send_webhook(result)
     return result
+
+
+def send_webhook(payload: dict):
+    body = json.dumps(payload)
+    signature = hmac.new(
+        WEBHOOK_SECRET.encode(),
+        body.encode(),
+        hashlib.sha256
+    ).hexdigest()
+
+    webhook_url = "https://webhook.site/66f71c0d-9188-4146-8afc-5b2ab8d6bc9a"
+    requests.post(
+        webhook_url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "X-Signature": signature
+        }
+    )
