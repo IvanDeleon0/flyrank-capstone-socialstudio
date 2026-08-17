@@ -5,6 +5,7 @@ import secrets
 app = FastAPI(title="Mock Social Platform API")
 
 idempotency_store = {}
+publish_call_count = 0
 
 class PublishRequest(BaseModel):
     post_id: str
@@ -26,6 +27,15 @@ def issue_token():
 
 @app.post("/publish")
 def publish(request: PublishRequest, idempotency_key: str = Header(None)):
+    global publish_call_count
+    publish_call_count += 1
+    if publish_call_count % 4 == 0:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded",
+            headers={"Retry-After": "5"}
+        )
+
     if idempotency_key is None:
         raise HTTPException(status_code=400, detail="Idempotency-Key header is required")
     if idempotency_key in idempotency_store:
