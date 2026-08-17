@@ -6,6 +6,7 @@ import hashlib
 import json
 import requests
 
+
 app = FastAPI(title="Mock Social Platform API")
 
 idempotency_store = {}
